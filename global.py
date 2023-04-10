@@ -1,72 +1,85 @@
 import numpy as np
 
-# Initializing the two sequences as strings:
-s1 = "ATTAC"
-s2 = "ATGC"
+s1 = "GATGCGCAG"
+s2 = "GGCAGTA"
+
+s2='0'+s2
+s1='0'+s1
 
 scheme=[2, -3, -1]
 #match mismatch gap
+
 m= len(s1)
 n= len(s2)
 
-# As per the Needleman-Wunsch algorithm, the initialization for the matrix is to assign gap penalty to first row & col
-# matrix[i][0] = gap_penalty*i & matrix[0][j] = gap_penalty*j
-mat = np.zeros((m + 1, n + 1))
-# initialize first row and column with gap penalties:
-for i in range(1, n + 1):
+mat = np.zeros((n , m ))
+# As per the Needleman-Wunsch algorithm, first row and column initialised with gap penalties
+for i in range(1, n):
     mat[i][0] = mat[i-1][0]+ scheme[2]
-for j in range(1, m + 1):
-    mat[0][j] = mat[i-1][0]+ scheme[2]
+for j in range(1, m):
+    mat[0][j] = mat[0][j-1]+ scheme[2]
 
-score=[] #diag left right
+score=[0,0,0] #diag left right
 for i in range(1, n):
     for j in range(1, m):
-        if s1[i] == s2[j]:
-           score[0]= m[0] + mat[i][j]
+        if s2[i] == s1[j]:
+           score[0]= scheme[0] + mat[i-1][j-1]
         else:
-           score[0]= m[1] + mat[i][j]
+           score[0]= scheme[1] + mat[i-1][j-1]
             
         score[1]= mat[i][j-1] + scheme[2]
-        score[2]= mat[i][j-1] + scheme[2]
+        score[2]= mat[i-1][j] + scheme[2]
         
-        mat[i][j + 1] = max(score)
+        mat[i][j] = max(score)
 
-        #mat[i][j + 1] = max(matrix[i][j] + match_score, matrix[i][j + 1] + Gap, matrix[i + 1][j] + Gap)
+#We will now trace back the possible paths taken during the alignment to identify all optimal alignments.
 
-# Now, the matrix has been filled, we need to perform the traceback after identifying the score : There are more than
-# one possibility of aligning, depending on the path taken during traceback, and we will be tracing all of those
-# below :
+aligned_sequences = []
 
-aligned_seqs = []
-
-
-def traceback(i, j, aligned_s1, aligned_s2):
+# Recursive function to trace all possible paths
+def alignments(i, j, aligned_s2, aligned_s1):
+    # Add the aligned sequences to the list
     if i == 0 and j == 0:
-        aligned_seqs.append((aligned_s1, aligned_s2))
+        aligned_sequences.append((aligned_s2, aligned_s1))
         return
-    if i > 0 and j > 0 and matrix[i][j] == matrix[i - 1][j - 1] + (Match if s1[i - 1] == s2[j - 1] else Mismatch):
-        traceback(i - 1, j - 1, s1[i - 1] + aligned_s1, s2[j - 1] + aligned_s2)
-    if i > 0 and matrix[i][j] == matrix[i - 1][j] + Gap:
-        traceback(i - 1, j, s1[i - 1] + aligned_s1, '-' + aligned_s2)
-    if j > 0 and matrix[i][j] == matrix[i][j - 1] + Gap:
-        traceback(i, j - 1, '-' + aligned_s1, s2[j - 1] + aligned_s2)
+    
+    # Trace the diagonal path
+    if i > 0 and j > 0 and mat[i][j] == mat[i - 1][j - 1] + (scheme[1], scheme[0])[s1[j] == s2[i]]:
+        alignments(i - 1, j - 1, s2[i] + aligned_s2, s1[j] + aligned_s1)
+
+    # Trace the gap in sequence 1 path
+    if i > 0 and mat[i][j] == mat[i - 1][j] + scheme[2]:
+        alignments(i - 1, j, s2[i] + aligned_s2, '-' + aligned_s1)
+
+    # Trace the gap in sequence 2 path
+    if j > 0 and mat[i][j] == mat[i][j - 1] + scheme[2]:
+        alignments(i, j - 1, '-' + aligned_s2, s1[j] +  aligned_s1)
+
+alignments(n-1, m-1, '', '')
+
+#------------------------------------------------------------------------------------------------------------------
+print()
+print('GLOBAL ALLIGNMENT MATRIX: ')
+print()
+for e in list(s1):
+    print(' ',e,'', end="")
+print()
+
+s3= (list(s2))
+for i in range (len(s3)):
+    print(s3[i], mat[i])
+
+print()
+print("SCORE: ", mat[n-1][m-1])
+print()
 
 
-traceback(n, m, '', '')
-# Formatting and printing the output
+print("Optimal Alignment(s): ")
+count=0
 print()
-print('GLOBAL ALLIGNMENT MATRIX : ')
-print()
-matrix_print = matrix.transpose()
-for i in range(m + 1):
-    print(matrix_print[i])
-print()
-print("SCORE : ", matrix[n][m])
-print()
-
-print("Alignment(s) for the score generated above (optimal alignments): ")
-for i, seq in enumerate(aligned_seqs):
-    print(f'Alignment {i + 1}:')
-    print(seq[0])
+for seq in (aligned_sequences):
+    print('Alignment ',count + 1,':')
     print(seq[1])
+    print(seq[0])
     print('\n')
+    count+=1
