@@ -1,74 +1,81 @@
 import numpy as np
 
-# Initializing the two sequences as arrays:
 s1 = "GATGCGCAG"
 s2 = "GGCAGTA"
 
-# the scoring scheme is as follows: (same as question2)
-Match = +2
-Mismatch = -1
-Gap = -3
+s2='0'+s2
+s1='0'+s1
 
-# initializing the matrix :
-n = len(s1)
-m = len(s2)
+scheme=[2, -1, -3]
+#match mismatch gap
 
-# As per the Smith-Waterman algorithm, the initialization for the matrix is to assign 0 to first row & col
-matrix = np.zeros((len(s1) + 1, len(s2) + 1))
+m= len(s1)
+n= len(s2)
 
-for i in range(n):
-    for j in range(m):
-        # match_score : check if the letter matches and assign match/mismatch (replace with 0 if value is negative)
-        if s1[i] == s2[j]:
-            match_score = max(0, Match)
+mat = np.zeros((n , m ))
+# As per the Needleman-Wunsch algorithm, first row and column initialised with gap penalties
+
+score=[0,0,0,0] #diag left right
+for i in range(1, n):
+    for j in range(1, m):
+        if s2[i] == s1[j]:
+            score[0] = mat[i-1][j-1] + scheme[0]
         else:
-            match_score = max(0, Mismatch)
+            score[0] = mat[i-1][j-1] + scheme[1]
 
-        # choosing the max value for each cell (ensuring value !=0), thereby generating the matrix :
-        matrix[i + 1][j + 1] = max(max(0, matrix[i][j] + match_score), max(0, matrix[i][j + 1] + Gap),
-                                   max(0, matrix[i + 1][j] + Gap))
+        score[1]=max(0, mat[i][j-1]+ scheme[2])
+        score[2]=max(0, mat[i-1][j]+ scheme[2])
+        
+        mat[i][j] = max(score)
 
-# Now, the matrix has been filled, we need to perform the traceback after identifying the score (which will be the max
-# value in the matrix):
-max_score = 0
+#We will now trace back the possible paths taken during the alignment to identify all optimal alignments.
 
-# Find the cell with the maximum score and its position (represented by [a][b])
-for i in range(len(s1) + 1):
-    for j in range(len(s2) + 1):
-        if matrix[i][j] > max_score:
-            max_score = matrix[i][j]
-            a = i
-            b = j
+aligned_sequences = []
 
-aligned_seqs = []
-# There are more than one possibility of aligning, and we will be tracing all of those below :
-
-def traceback(a, b, aligned_s1, aligned_s2):
-    if matrix[a][b] == 0:
-        aligned_seqs.append((aligned_s1, aligned_s2))
+# Recursive function to trace all possible paths
+def alignments(i, j, aligned_s2, aligned_s1):
+    if i == 0 and j == 0:
+        aligned_sequences.append((aligned_s2, aligned_s1)) # Add the aligned sequences to the list
         return
-    if a > 0 and b > 0 and matrix[a][b] == matrix[a - 1][b - 1] + (Match if s1[a - 1] == s2[b - 1] else Mismatch):
-        traceback(a - 1, b - 1, s1[a - 1] + aligned_s1, s2[b - 1] + aligned_s2)
-    if a > 0 and matrix[a][b] == max(0, matrix[a - 1][b] + Gap):
-        traceback(a - 1, b, s1[a - 1] + aligned_s1, '-' + aligned_s2)
-    if b > 0 and matrix[a][b] == max(0, matrix[a][b - 1] + Gap):
-        traceback(a, b - 1, '-' + aligned_s1, s2[b - 1] + aligned_s2)
+    
+    # Trace the diagonal path
+    if i > 0 and j > 0 and mat[i][j] == mat[i - 1][j - 1] + (scheme[1], scheme[0])[s1[j] == s2[i]]: 
+        alignments(i - 1, j - 1, s2[i] + aligned_s2, s1[j] + aligned_s1) 
 
+    # Trace the gap in sequence 1 path
+    if i > 0 and mat[i][j] == max(0, mat[i - 1][j] + scheme[2]):
+        alignments(i - 1, j, s2[i] + aligned_s2, '-' + aligned_s1)
 
-traceback(a, b, '', '')
+    # Trace the gap in sequence 2 path
+    if j > 0 and mat[i][j] == max(0, mat[i][j - 1] + scheme[2]):
+        alignments(i, j - 1, '-' + aligned_s2, s1[j] +  aligned_s1)
+
+alignments(n-1, m-1, '', '')
+
+#------------------------------------------------------------------------------------------------------------------
+print()
+print('LOCAL ALLIGNMENT MATRIX: ')
+print()
+for e in list(s1):
+    print(' ',e, end="")
+print()
+
+s3= (list(s2))
+max_score=0
+for i in range (len(s3)):
+    print(s3[i], mat[i])
+    max_score= max( max(mat[i]), max_score) # Calculate the max score in the matrix
 
 print()
-print('LOCAL ALLIGNMENT MATRIX : ')
+print("SCORE: ", max_score)
 print()
-matrix_print = matrix.transpose()
-for i in range(m + 1):
-    print(matrix_print[i])
+
+print("Optimal Alignment(s): ")
+count=0
 print()
-print("SCORE : ", max_score)
-print()
-print("Alignment(s) for the score generated above (optimal alignments): ")
-for i, seq in enumerate(aligned_seqs):
-    print(f'Alignment {i + 1}:')
-    print(seq[0])
+for seq in (aligned_sequences):
+    print('Alignment ',count + 1,':')
     print(seq[1])
+    print(seq[0])
     print('\n')
+    count+=1
